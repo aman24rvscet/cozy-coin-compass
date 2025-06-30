@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, LogOut, DollarSign, TrendingUp, Calendar } from 'lucide-react';
+import { PlusCircle, LogOut, DollarSign, TrendingUp, Calendar, Settings, Euro, IndianRupee } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import ExpenseForm from './ExpenseForm';
 import ExpenseList from './ExpenseList';
 import BudgetManager from './BudgetManager';
@@ -18,6 +20,7 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const { currency } = useSettings();
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
     totalExpenses: 0,
@@ -26,6 +29,29 @@ const Dashboard: React.FC = () => {
     expenseCount: 0
   });
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const getCurrencySymbol = (currencyCode: string) => {
+    switch (currencyCode) {
+      case 'EUR': return '€';
+      case 'INR': return '₹';
+      case 'USD': 
+      default: return '$';
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    const symbol = getCurrencySymbol(currency);
+    return `${symbol}${amount.toFixed(2)}`;
+  };
+
+  const getCurrencyIcon = (currencyCode: string) => {
+    switch (currencyCode) {
+      case 'EUR': return Euro;
+      case 'INR': return IndianRupee;
+      case 'USD':
+      default: return DollarSign;
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -77,19 +103,29 @@ const Dashboard: React.FC = () => {
     setShowExpenseForm(false);
   };
 
+  const CurrencyIcon = getCurrencyIcon(currency);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Expense Tracker</h1>
-              <p className="text-sm text-gray-500">Welcome back, {user?.full_name || user?.email}</p>
+              <h1 className="text-2xl font-bold">Expense Tracker</h1>
+              <p className="text-sm text-muted-foreground">Welcome back, {user?.full_name || user?.email}</p>
             </div>
-            <Button onClick={logout} variant="outline" size="sm">
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link to="/settings">
+                <Button variant="outline" size="sm">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+              </Link>
+              <Button onClick={logout} variant="outline" size="sm">
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -99,10 +135,10 @@ const Dashboard: React.FC = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CurrencyIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalExpenses.toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(stats.totalExpenses)}</div>
               <p className="text-xs text-muted-foreground">
                 {stats.expenseCount} total transactions
               </p>
@@ -115,7 +151,7 @@ const Dashboard: React.FC = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.monthlyExpenses.toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(stats.monthlyExpenses)}</div>
               <p className="text-xs text-muted-foreground">
                 Current month spending
               </p>
@@ -128,7 +164,7 @@ const Dashboard: React.FC = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalBudget.toFixed(2)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(stats.totalBudget)}</div>
               <p className="text-xs text-muted-foreground">
                 Monthly budget limit
               </p>

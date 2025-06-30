@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import bcrypt from 'bcryptjs';
 
 interface User {
   id: string;
@@ -44,23 +45,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.rpc('login_user', {
-        user_email: email,
-        user_password: password
-      });
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .limit(1);
 
       if (error) throw error;
       
-      if (data && data.length > 0) {
-        const userData = data[0];
-        const userObj = {
-          id: userData.id,
-          email: userData.email,
-          full_name: userData.full_name
-        };
-        setUser(userObj);
-        localStorage.setItem('user', JSON.stringify(userObj));
-        return {};
+      if (users && users.length > 0) {
+        const user = users[0];
+        const isValidPassword = await bcrypt.compare(password, user.password_hash);
+        
+        if (isValidPassword) {
+          const userObj = {
+            id: user.id,
+            email: user.email,
+            full_name: user.full_name
+          };
+          setUser(userObj);
+          localStorage.setItem('user', JSON.stringify(userObj));
+          return {};
+        } else {
+          return { error: 'Invalid email or password' };
+        }
       } else {
         return { error: 'Invalid email or password' };
       }
@@ -71,20 +79,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string, fullName?: string) => {
     try {
-      const { data, error } = await supabase.rpc('signup_user', {
-        user_email: email,
-        user_password: password,
-        user_full_name: fullName || null
-      });
+      const hashedPassword = await bcrypt.hash(password, 10);
+      
+      const { data: newUser, error } = await supabase
+        .from('users')
+        .insert([{
+          email,
+          password_hash: hashedPassword,
+          full_name: fullName || null
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
       
-      if (data && data.length > 0) {
-        const userData = data[0];
+      if (newUser) {
         const userObj = {
-          id: userData.id,
-          email: userData.email,
-          full_name: userData.full_name
+          id: newUser.id,
+          email: newUser.email,
+          full_name: newUser.full_name
         };
         setUser(userObj);
         localStorage.setItem('user', JSON.stringify(userObj));
@@ -93,7 +106,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error: 'Signup failed' };
       }
     } catch (error: any) {
-      if (error.message.includes('duplicate key')) {
+      if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
         return { error: 'Email already exists' };
       }
       return { error: error.message || 'Signup failed' };

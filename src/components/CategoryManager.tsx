@@ -255,7 +255,7 @@ const CategoryManager: React.FC = () => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4">
           {categories.map((category) => {
             const IconComponent = getIconComponent(category.icon);
             return (
@@ -278,7 +278,7 @@ const CategoryManager: React.FC = () => {
                     variant="ghost"
                     onClick={() => handleEdit(category)}
                   >
-                    <Edit className="w-4 h-4" />
+                    <Edit className="w-2 h-4" />
                   </Button>
                   <Button
                     size="sm"

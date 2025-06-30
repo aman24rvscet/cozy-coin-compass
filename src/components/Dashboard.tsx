@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -34,7 +33,7 @@ const Dashboard: React.FC = () => {
     switch (currencyCode) {
       case 'EUR': return '€';
       case 'INR': return '₹';
-      case 'USD': 
+      case 'USD': return '$';
       default: return '$';
     }
   };
@@ -48,7 +47,7 @@ const Dashboard: React.FC = () => {
     switch (currencyCode) {
       case 'EUR': return Euro;
       case 'INR': return IndianRupee;
-      case 'USD':
+      case 'USD': return DollarSign;
       default: return DollarSign;
     }
   };
@@ -111,7 +110,11 @@ const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold">Expense Tracker</h1>
+              {/* <h1 className="text-2xl font-bold">Expense Tracker</h1> */}
+              <div className="flex items-center gap-2">
+                <img src="/below.png" alt="logo" className="w-40 h-12 bg-transparent" />
+                {/* <h1 className="text-2xl font-bold">Expense Tracker</h1> */}
+              </div>
               <p className="text-sm text-muted-foreground">Welcome back, {user?.full_name || user?.email}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -201,7 +204,7 @@ const Dashboard: React.FC = () => {
 
           <div>
             <h2 className="text-xl font-semibold mb-6">Budget Management</h2>
-            <BudgetManager onBudgetChange={() => setRefreshKey(prev => prev + 1)} />
+            <BudgetManager onBudgetChange={() => setRefreshKey(prev => prev + 1)} refreshKey={refreshKey} />
           </div>
         </div>
       </main>

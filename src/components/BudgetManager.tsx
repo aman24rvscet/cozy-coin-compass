@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, DollarSign, Euro, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Category {
@@ -27,13 +26,15 @@ interface Budget {
     color: string;
   };
   spent: number;
+  currency?: string;
 }
 
 interface BudgetManagerProps {
   onBudgetChange: () => void;
+  refreshKey?: number;
 }
 
-const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange }) => {
+const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange, refreshKey }) => {
   const { user } = useAuth();
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -41,16 +42,23 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange }) => {
   const [formData, setFormData] = useState({
     categoryId: '',
     amount: '',
-    period: 'monthly'
+    period: 'monthly',
+    currency: 'USD',
   });
   const [loading, setLoading] = useState(false);
+
+  const currencyOptions = [
+    { value: 'USD', label: 'USD', icon: DollarSign },
+    { value: 'EUR', label: 'EUR', icon: Euro },
+    { value: 'INR', label: 'INR', icon: IndianRupee },
+  ];
 
   useEffect(() => {
     if (user) {
       loadBudgets();
       loadCategories();
     }
-  }, [user]);
+  }, [user, refreshKey]);
 
   const loadCategories = async () => {
     if (!user) return;
@@ -83,7 +91,8 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange }) => {
             id,
             name,
             color
-          )
+          ),
+          currency
         `)
         .eq('user_id', user.id);
 
@@ -111,7 +120,8 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange }) => {
               name: budget.expense_categories.name,
               color: budget.expense_categories.color
             },
-            spent
+            spent,
+            currency: budget.currency
           };
         })
       );
@@ -136,14 +146,14 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange }) => {
             category_id: formData.categoryId,
             amount: parseFloat(formData.amount),
             period: formData.period,
-            currency: 'USD'
+            currency: formData.currency,
           }
         ]);
 
       if (error) throw error;
 
       toast.success('Budget created successfully!');
-      setFormData({ categoryId: '', amount: '', period: 'monthly' });
+      setFormData({ categoryId: '', amount: '', period: 'monthly', currency: 'USD' });
       setShowForm(false);
       loadBudgets();
       onBudgetChange();
@@ -237,6 +247,26 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange }) => {
                 </Select>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="currency">Currency</Label>
+                <Select
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencyOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value} className="flex items-center gap-2">
+                        <option.icon className="w-4 h-4 inline-block mr-1" />
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="flex-1">
                   Cancel
@@ -254,6 +284,9 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange }) => {
         {budgets.map((budget) => {
           const percentage = budget.amount > 0 ? (budget.spent / budget.amount) * 100 : 0;
           const isOverBudget = percentage > 100;
+          const currencyOption = currencyOptions.find(opt => opt.value === (budget.currency || 'USD')) || currencyOptions[0];
+          const CurrencyIcon = currencyOption.icon;
+          const currencySymbol = currencyOption.value === 'USD' ? '$' : currencyOption.value === 'EUR' ? '€' : '₹';
 
           return (
             <Card key={budget.id}>
@@ -266,8 +299,9 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange }) => {
                     <p className="text-sm text-gray-500 capitalize">{budget.period}</p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <CurrencyIcon className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm">
-                      ${budget.spent.toFixed(2)} / ${budget.amount.toFixed(2)}
+                      {currencySymbol}{budget.spent.toFixed(2)} / {currencySymbol}{budget.amount.toFixed(2)}
                     </span>
                     <Button
                       variant="outline"

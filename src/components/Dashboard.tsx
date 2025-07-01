@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, LogOut, DollarSign, TrendingUp, Calendar, Settings, Euro, IndianRupee } from 'lucide-react';
+import { PlusCircle, LogOut, DollarSign, TrendingUp, Calendar, Settings, Euro, IndianRupee, BarChart3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ExpenseForm from './ExpenseForm';
 import ExpenseList from './ExpenseList';
@@ -110,14 +111,18 @@ const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              {/* <h1 className="text-2xl font-bold">Expense Tracker</h1> */}
               <div className="flex items-center gap-2">
                 <img src="/below.png" alt="logo" className="w-40 h-12 bg-transparent" />
-                {/* <h1 className="text-2xl font-bold">Expense Tracker</h1> */}
               </div>
               <p className="text-sm text-muted-foreground">Welcome back, {user?.full_name || user?.email}</p>
             </div>
             <div className="flex items-center gap-2">
+              <Link to="/analytics">
+                <Button variant="outline" size="sm">
+                  <BarChart3 className="w-4 h-4 mr-2" />
+                  Analytics
+                </Button>
+              </Link>
               <Link to="/settings">
                 <Button variant="outline" size="sm">
                   <Settings className="w-4 h-4 mr-2" />

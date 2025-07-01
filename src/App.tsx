@@ -9,6 +9,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import Dashboard from "@/components/Dashboard";
 import Auth from "@/pages/Auth";
 import Settings from "@/pages/Settings";
+import Analytics from "@/pages/Analytics";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,11 @@ const App = () => (
               <Route path="/settings" element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics" element={
+                <ProtectedRoute>
+                  <Analytics />
                 </ProtectedRoute>
               } />
               <Route path="/auth" element={

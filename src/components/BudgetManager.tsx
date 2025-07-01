@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { PlusCircle, Trash2, DollarSign, Euro, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
+import OverallBudgetManager from './OverallBudgetManager';
 
 interface Category {
   id: string;
@@ -182,156 +183,162 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange, refreshKe
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Budgets</h3>
-        <Button size="sm" onClick={() => setShowForm(!showForm)}>
-          <PlusCircle className="w-4 h-4 mr-1" />
-          Add Budget
-        </Button>
-      </div>
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Create Budget</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select 
-                  value={formData.categoryId} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount ($)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="period">Period</Label>
-                <Select 
-                  value={formData.period} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, period: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currencyOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value} className="flex items-center gap-2">
-                        <option.icon className="w-4 h-4 inline-block mr-1" />
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={loading} className="flex-1">
-                  {loading ? 'Creating...' : 'Create Budget'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
+    <div className="space-y-6">
+      {/* Overall Budget Section */}
+      <OverallBudgetManager onBudgetChange={onBudgetChange} refreshKey={refreshKey} />
+      
+      {/* Category Budgets Section */}
       <div className="space-y-4">
-        {budgets.map((budget) => {
-          const percentage = budget.amount > 0 ? (budget.spent / budget.amount) * 100 : 0;
-          const isOverBudget = percentage > 100;
-          const currencyOption = currencyOptions.find(opt => opt.value === (budget.currency || 'USD')) || currencyOptions[0];
-          const CurrencyIcon = currencyOption.icon;
-          const currencySymbol = currencyOption.value === 'USD' ? '$' : currencyOption.value === 'EUR' ? '€' : '₹';
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">Category Budgets</h3>
+          <Button size="sm" onClick={() => setShowForm(!showForm)}>
+            <PlusCircle className="w-4 h-4 mr-1" />
+            Add Category Budget
+          </Button>
+        </div>
 
-          return (
-            <Card key={budget.id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h4 className="font-medium" style={{ color: budget.category.color }}>
-                      {budget.category.name}
-                    </h4>
-                    <p className="text-sm text-gray-500 capitalize">{budget.period}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CurrencyIcon className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">
-                      {currencySymbol}{budget.spent.toFixed(2)} / {currencySymbol}{budget.amount.toFixed(2)}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => deleteBudget(budget.id)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-                <Progress 
-                  value={Math.min(percentage, 100)} 
-                  className={`h-2 ${isOverBudget ? '[&>div]:bg-red-500' : ''}`}
-                />
-                <p className={`text-xs mt-1 ${isOverBudget ? 'text-red-600' : 'text-gray-500'}`}>
-                  {percentage.toFixed(1)}% used
-                  {isOverBudget && ' (Over budget!)'}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
-
-        {budgets.length === 0 && (
+        {showForm && (
           <Card>
-            <CardContent className="py-8 text-center">
-              <p className="text-gray-500">No budgets set. Create your first budget to track spending!</p>
+            <CardHeader>
+              <CardTitle className="text-lg">Create Budget</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select 
+                    value={formData.categoryId} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, categoryId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount ($)</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="period">Period</Label>
+                  <Select 
+                    value={formData.period} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, period: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Currency</Label>
+                  <Select
+                    value={formData.currency}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencyOptions.map(option => (
+                        <SelectItem key={option.value} value={option.value} className="flex items-center gap-2">
+                          <option.icon className="w-4 h-4 inline-block mr-1" />
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading} className="flex-1">
+                    {loading ? 'Creating...' : 'Create Budget'}
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         )}
+
+        <div className="space-y-4">
+          {budgets.map((budget) => {
+            const percentage = budget.amount > 0 ? (budget.spent / budget.amount) * 100 : 0;
+            const isOverBudget = percentage > 100;
+            const currencyOption = currencyOptions.find(opt => opt.value === (budget.currency || 'USD')) || currencyOptions[0];
+            const CurrencyIcon = currencyOption.icon;
+            const currencySymbol = currencyOption.value === 'USD' ? '$' : currencyOption.value === 'EUR' ? '€' : '₹';
+
+            return (
+              <Card key={budget.id}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h4 className="font-medium" style={{ color: budget.category.color }}>
+                        {budget.category.name}
+                      </h4>
+                      <p className="text-sm text-gray-500 capitalize">{budget.period}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CurrencyIcon className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">
+                        {currencySymbol}{budget.spent.toFixed(2)} / {currencySymbol}{budget.amount.toFixed(2)}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => deleteBudget(budget.id)}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <Progress 
+                    value={Math.min(percentage, 100)} 
+                    className={`h-2 ${isOverBudget ? '[&>div]:bg-red-500' : ''}`}
+                  />
+                  <p className={`text-xs mt-1 ${isOverBudget ? 'text-red-600' : 'text-gray-500'}`}>
+                    {percentage.toFixed(1)}% used
+                    {isOverBudget && ' (Over budget!)'}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {budgets.length === 0 && (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-gray-500">No budgets set. Create your first budget to track spending!</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

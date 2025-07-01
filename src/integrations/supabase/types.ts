@@ -12,6 +12,7 @@ export type Database = {
       budgets: {
         Row: {
           amount: number
+          budget_date: string | null
           category_id: string | null
           created_at: string | null
           currency: string | null
@@ -21,6 +22,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          budget_date?: string | null
           category_id?: string | null
           created_at?: string | null
           currency?: string | null
@@ -30,6 +32,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          budget_date?: string | null
           category_id?: string | null
           created_at?: string | null
           currency?: string | null
@@ -136,6 +139,44 @@ export type Database = {
           },
           {
             foreignKeyName: "expenses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      overall_budgets: {
+        Row: {
+          amount: number
+          budget_date: string
+          created_at: string | null
+          currency: string | null
+          id: string
+          period: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          budget_date?: string
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          period?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          budget_date?: string
+          created_at?: string | null
+          currency?: string | null
+          id?: string
+          period?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overall_budgets_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"

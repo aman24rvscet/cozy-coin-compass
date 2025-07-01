@@ -3,51 +3,37 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Edit, Trash2, DollarSign, Home, Car, ShoppingBag, Coffee, Gamepad2, Heart, Plane, Book, Shirt, Utensils } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PlusCircle, Trash2, Edit } from 'lucide-react';
+import { toast } from 'sonner';
+import CategoryIcon, { CATEGORY_ICONS } from './CategoryIcon';
 
 interface Category {
   id: string;
   name: string;
-  icon: string;
   color: string;
+  icon: string;
 }
-
-const iconOptions = [
-  { name: 'dollar-sign', component: DollarSign },
-  { name: 'home', component: Home },
-  { name: 'car', component: Car },
-  { name: 'shopping-bag', component: ShoppingBag },
-  { name: 'coffee', component: Coffee },
-  { name: 'gamepad-2', component: Gamepad2 },
-  { name: 'heart', component: Heart },
-  { name: 'plane', component: Plane },
-  { name: 'book', component: Book },
-  { name: 'shirt', component: Shirt },
-  { name: 'utensils', component: Utensils },
-];
-
-const colorOptions = [
-  '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', 
-  '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6B7280'
-];
 
 const CategoryManager: React.FC = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    icon: 'dollar-sign',
-    color: '#3B82F6'
+    color: '#3B82F6',
+    icon: 'dollar-sign'
   });
+  const [loading, setLoading] = useState(false);
+
+  const colors = [
+    '#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6',
+    '#EC4899', '#14B8A6', '#F97316', '#84CC16', '#06B6D4'
+  ];
 
   useEffect(() => {
     if (user) {
@@ -69,103 +55,82 @@ const CategoryManager: React.FC = () => {
       setCategories(data || []);
     } catch (error) {
       console.error('Error loading categories:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load categories",
-        variant: "destructive",
-      });
     }
+  };
+
+  const resetForm = () => {
+    setFormData({ name: '', color: '#3B82F6', icon: 'dollar-sign' });
+    setEditingCategory(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
+    setLoading(true);
     try {
       if (editingCategory) {
         const { error } = await supabase
           .from('expense_categories')
           .update({
             name: formData.name,
+            color: formData.color,
             icon: formData.icon,
-            color: formData.color
           })
           .eq('id', editingCategory.id);
 
         if (error) throw error;
-        toast({
-          title: "Success",
-          description: "Category updated successfully",
-        });
+        toast.success('Category updated successfully!');
       } else {
         const { error } = await supabase
           .from('expense_categories')
-          .insert([{
-            user_id: user.id,
-            name: formData.name,
-            icon: formData.icon,
-            color: formData.color
-          }]);
+          .insert([
+            {
+              user_id: user.id,
+              name: formData.name,
+              color: formData.color,
+              icon: formData.icon,
+            }
+          ]);
 
         if (error) throw error;
-        toast({
-          title: "Success",
-          description: "Category created successfully",
-        });
+        toast.success('Category created successfully!');
       }
 
-      setIsDialogOpen(false);
-      setEditingCategory(null);
-      setFormData({ name: '', icon: 'dollar-sign', color: '#3B82F6' });
+      resetForm();
+      setShowForm(false);
       loadCategories();
-    } catch (error) {
-      console.error('Error saving category:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save category",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save category');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = (category: Category) => {
-    setEditingCategory(category);
-    setFormData({
-      name: category.name,
-      icon: category.icon,
-      color: category.color
-    });
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = async (categoryId: string) => {
-    if (!user) return;
-
+  const deleteCategory = async (id: string) => {
     try {
       const { error } = await supabase
         .from('expense_categories')
         .delete()
-        .eq('id', categoryId);
+        .eq('id', id);
 
       if (error) throw error;
-      toast({
-        title: "Success",
-        description: "Category deleted successfully",
-      });
+
+      toast.success('Category deleted successfully');
       loadCategories();
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete category",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete category');
     }
   };
 
-  const getIconComponent = (iconName: string) => {
-    const iconOption = iconOptions.find(option => option.name === iconName);
-    return iconOption ? iconOption.component : DollarSign;
+  const startEdit = (category: Category) => {
+    setEditingCategory(category);
+    setFormData({
+      name: category.name,
+      color: category.color,
+      icon: category.icon
+    });
+    setShowForm(true);
   };
 
   return (
@@ -176,59 +141,64 @@ const CategoryManager: React.FC = () => {
             <CardTitle>Categories</CardTitle>
             <CardDescription>Manage your expense categories</CardDescription>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => {
-                setEditingCategory(null);
-                setFormData({ name: '', icon: 'dollar-sign', color: '#3B82F6' });
-              }}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Category
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
-                <DialogDescription>
-                  Create a new category for organizing your expenses.
-                </DialogDescription>
-              </DialogHeader>
+          <Button onClick={() => setShowForm(!showForm)}>
+            <PlusCircle className="w-4 h-4 mr-2" />
+            {showForm ? 'Cancel' : 'Add Category'}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {showForm && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">
+                {editingCategory ? 'Edit Category' : 'Create Category'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <Label htmlFor="name">Category Name</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name</Label>
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Enter category name"
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Category name"
                     required
                   />
                 </div>
-                <div>
+
+                <div className="space-y-2">
                   <Label htmlFor="icon">Icon</Label>
-                  <Select value={formData.icon} onValueChange={(value) => setFormData({ ...formData, icon: value })}>
+                  <Select 
+                    value={formData.icon} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, icon: value }))}
+                  >
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
+                          <CategoryIcon iconName={formData.icon} />
+                          <span className="capitalize">{formData.icon.replace('-', ' ')}</span>
+                        </div>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {iconOptions.map((icon) => {
-                        const IconComponent = icon.component;
-                        return (
-                          <SelectItem key={icon.name} value={icon.name}>
-                            <div className="flex items-center gap-2">
-                              <IconComponent className="w-4 h-4" />
-                              {icon.name}
-                            </div>
-                          </SelectItem>
-                        );
-                      })}
+                      {Object.keys(CATEGORY_ICONS).map((iconKey) => (
+                        <SelectItem key={iconKey} value={iconKey}>
+                          <div className="flex items-center gap-2">
+                            <CategoryIcon iconName={iconKey} />
+                            <span className="capitalize">{iconKey.replace('-', ' ')}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label htmlFor="color">Color</Label>
-                  <div className="flex gap-2 mt-2">
-                    {colorOptions.map((color) => (
+
+                <div className="space-y-2">
+                  <Label>Color</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {colors.map((color) => (
                       <button
                         key={color}
                         type="button"
@@ -236,61 +206,77 @@ const CategoryManager: React.FC = () => {
                           formData.color === color ? 'border-gray-800' : 'border-gray-300'
                         }`}
                         style={{ backgroundColor: color }}
-                        onClick={() => setFormData({ ...formData, color })}
+                        onClick={() => setFormData(prev => ({ ...prev, color }))}
                       />
                     ))}
                   </div>
+                  <Input
+                    type="color"
+                    value={formData.color}
+                    onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                    className="w-full h-10"
+                  />
                 </div>
+
                 <div className="flex gap-2">
-                  <Button type="submit" className="flex-1">
-                    {editingCategory ? 'Update' : 'Create'} Category
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    setShowForm(false);
+                    resetForm();
+                  }} className="flex-1">
                     Cancel
+                  </Button>
+                  <Button type="submit" disabled={loading} className="flex-1">
+                    {loading ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
                   </Button>
                 </div>
               </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4">
-          {categories.map((category) => {
-            const IconComponent = getIconComponent(category.icon);
-            return (
-              <div
-                key={category.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: category.color + '20' }}
-                  >
-                    <IconComponent className="w-5 h-5" style={{ color: category.color }} />
-                  </div>
-                  <span className="font-medium">{category.name}</span>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid gap-3">
+          {categories.map((category) => (
+            <div 
+              key={category.id} 
+              className="flex items-center justify-between p-3 border rounded-lg"
+            >
+              <div className="flex items-center gap-3">
+                <div 
+                  className="w-4 h-4 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: category.color }}
+                >
+                  <CategoryIcon 
+                    iconName={category.icon} 
+                    size={12} 
+                    color="white"
+                  />
                 </div>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEdit(category)}
-                  >
-                    <Edit className="w-2 h-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDelete(category.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                <span className="font-medium">{category.name}</span>
               </div>
-            );
-          })}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => startEdit(category)}
+                >
+                  <Edit className="w-3 h-3" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => deleteCategory(category.id)}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          ))}
+
+          {categories.length === 0 && (
+            <p className="text-center text-gray-500 py-8">
+              No categories yet. Create your first category!
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>

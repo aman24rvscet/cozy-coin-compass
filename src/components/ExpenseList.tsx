@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Trash2, Edit } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Trash2, Edit, DollarSign, Euro, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
+import CategoryIcon from './CategoryIcon';
 
 interface Expense {
   id: string;
@@ -14,9 +16,12 @@ interface Expense {
   description: string;
   expense_date: string;
   category: {
+    id: string;
     name: string;
     color: string;
+    icon: string;
   } | null;
+  currency: string;
 }
 
 interface ExpenseListProps {
@@ -26,47 +31,87 @@ interface ExpenseListProps {
 
 const ExpenseList: React.FC<ExpenseListProps> = ({ refreshKey, onExpenseChange }) => {
   const { user } = useAuth();
+  const { currency } = useSettings();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+
+  const getCurrencySymbol = (currencyCode: string) => {
+    switch (currencyCode) {
+      case 'EUR': return '€';
+      case 'INR': return '₹';
+      case 'USD': return '$';
+      default: return '$';
+    }
+  };
+
+  const getCurrencyIcon = (currencyCode: string) => {
+    switch (currencyCode) {
+      case 'EUR': return Euro;
+      case 'INR': return IndianRupee;
+      default: return DollarSign;
+    }
+  };
 
   useEffect(() => {
-    loadExpenses();
-  }, [user, refreshKey]);
+    if (user) {
+      loadExpenses();
+    }
+  }, [user, refreshKey, filter]);
 
   const loadExpenses = async () => {
     if (!user) return;
 
+    setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('expenses')
         .select(`
           id,
           amount,
           description,
           expense_date,
+          currency,
           expense_categories (
+            id,
             name,
-            color
+            color,
+            icon
           )
         `)
         .eq('user_id', user.id)
         .order('expense_date', { ascending: false })
-        .limit(10);
+        .limit(20);
+
+      if (filter !== 'all') {
+        const date = new Date();
+        if (filter === 'week') {
+          date.setDate(date.getDate() - 7);
+        } else if (filter === 'month') {
+          date.setMonth(date.getMonth() - 1);
+        }
+        query = query.gte('expense_date', date.toISOString().split('T')[0]);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      const formattedExpenses = data?.map(expense => ({
+      const processedExpenses: Expense[] = (data || []).map(expense => ({
         id: expense.id,
-        amount: expense.amount,
-        description: expense.description,
+        amount: Number(expense.amount),
+        description: expense.description || '',
         expense_date: expense.expense_date,
+        currency: expense.currency || 'USD',
         category: expense.expense_categories ? {
+          id: expense.expense_categories.id,
           name: expense.expense_categories.name,
-          color: expense.expense_categories.color
+          color: expense.expense_categories.color,
+          icon: expense.expense_categories.icon
         } : null
-      })) || [];
+      }));
 
-      setExpenses(formattedExpenses);
+      setExpenses(processedExpenses);
     } catch (error) {
       console.error('Error loading expenses:', error);
       toast.error('Failed to load expenses');
@@ -85,6 +130,7 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ refreshKey, onExpenseChange }
       if (error) throw error;
 
       toast.success('Expense deleted successfully');
+      loadExpenses();
       onExpenseChange();
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete expense');
@@ -92,58 +138,107 @@ const ExpenseList: React.FC<ExpenseListProps> = ({ refreshKey, onExpenseChange }
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading expenses...</div>;
-  }
-
-  if (expenses.length === 0) {
     return (
       <Card>
         <CardContent className="py-8 text-center">
-          <p className="text-gray-500">No expenses found. Add your first expense to get started!</p>
+          <p>Loading expenses...</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {expenses.map((expense) => (
-        <Card key={expense.id}>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="font-semibold text-lg">${expense.amount.toFixed(2)}</span>
-                  {expense.category && (
-                    <Badge 
-                      variant="secondary" 
-                      style={{ backgroundColor: expense.category.color + '20', color: expense.category.color }}
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Recent Expenses</CardTitle>
+            <CardDescription>Your latest transactions</CardDescription>
+          </div>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {expenses.map((expense) => {
+            const CurrencyIcon = getCurrencyIcon(expense.currency);
+            const currencySymbol = getCurrencySymbol(expense.currency);
+
+            return (
+              <div key={expense.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3 flex-1">
+                  {expense.category ? (
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: expense.category.color }}
                     >
-                      {expense.category.name}
-                    </Badge>
+                      <CategoryIcon 
+                        iconName={expense.category.icon} 
+                        size={16} 
+                        color="white"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+                      <CategoryIcon iconName="dollar-sign" size={16} color="white" />
+                    </div>
                   )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium truncate">
+                        {expense.description || 'No description'}
+                      </span>
+                      {expense.category && (
+                        <span 
+                          className="text-xs px-2 py-1 rounded-full text-white flex-shrink-0"
+                          style={{ backgroundColor: expense.category.color }}
+                        >
+                          {expense.category.name}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      {new Date(expense.expense_date).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                {expense.description && (
-                  <p className="text-gray-600 mb-2">{expense.description}</p>
-                )}
-                <p className="text-sm text-gray-500">
-                  {new Date(expense.expense_date).toLocaleDateString()}
-                </p>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 font-semibold">
+                      <CurrencyIcon className="w-4 h-4" />
+                      <span>{currencySymbol}{expense.amount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => deleteExpense(expense.id)}
+                    className="ml-2"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => deleteExpense(expense.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+            );
+          })}
+
+          {expenses.length === 0 && (
+            <p className="text-center text-gray-500 py-8">
+              No expenses found. Add your first expense to get started!
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

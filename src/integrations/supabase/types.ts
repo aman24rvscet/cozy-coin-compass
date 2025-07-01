@@ -146,6 +146,56 @@ export type Database = {
           },
         ]
       }
+      income_sources: {
+        Row: {
+          amount: number
+          created_at: string | null
+          currency: string | null
+          description: string | null
+          frequency: string | null
+          id: string
+          income_date: string
+          is_active: boolean | null
+          source_type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          income_date?: string
+          is_active?: boolean | null
+          source_type?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          currency?: string | null
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          income_date?: string
+          is_active?: boolean | null
+          source_type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "income_sources_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       overall_budgets: {
         Row: {
           amount: number

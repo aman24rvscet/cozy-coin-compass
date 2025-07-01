@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Home, Calendar, TrendingUp, PieChart, BarChart3, LineChart, DollarSign, Euro, IndianRupee } from 'lucide-react';
+import { Home, Calendar, TrendingUp, PieChart, BarChart3, LineChart, DollarSign, Euro, IndianRupee, Wallet } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart as RechartsLineChart, Line, AreaChart, Area, Pie } from 'recharts';
+import CategoryIcon from '@/components/CategoryIcon';
 
 interface ExpenseData {
   id: string;
@@ -20,6 +22,7 @@ interface ExpenseData {
   category: {
     name: string;
     color: string;
+    icon: string;
   } | null;
 }
 
@@ -28,12 +31,14 @@ interface CategorySpending {
   amount: number;
   color: string;
   count: number;
+  icon: string;
 }
 
 interface MonthlyData {
   month: string;
   amount: number;
   expenses: number;
+  income: number;
 }
 
 const Analytics: React.FC = () => {
@@ -49,6 +54,8 @@ const Analytics: React.FC = () => {
   const [totalSpent, setTotalSpent] = useState(0);
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [averagePerDay, setAveragePerDay] = useState(0);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [savingsRate, setSavingsRate] = useState(0);
 
   const currencySymbol = currency === 'EUR' ? '€' : currency === 'INR' ? '₹' : '$';
   const CurrencyIcon = currency === 'EUR' ? Euro : currency === 'INR' ? IndianRupee : DollarSign;
@@ -111,7 +118,8 @@ const Analytics: React.FC = () => {
           expense_date,
           expense_categories (
             name,
-            color
+            color,
+            icon
           )
         `)
         .eq('user_id', user.id)
@@ -121,6 +129,15 @@ const Analytics: React.FC = () => {
 
       if (error) throw error;
 
+      // Load income sources for the same period
+      const { data: incomeData, error: incomeError } = await supabase
+        .from('income_sources')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
+      if (incomeError) throw incomeError;
+
       const processedExpenses: ExpenseData[] = (expenseData || []).map(expense => ({
         id: expense.id,
         amount: Number(expense.amount),
@@ -128,7 +145,8 @@ const Analytics: React.FC = () => {
         expense_date: expense.expense_date,
         category: expense.expense_categories ? {
           name: expense.expense_categories.name,
-          color: expense.expense_categories.color
+          color: expense.expense_categories.color,
+          icon: expense.expense_categories.icon
         } : null
       }));
 
@@ -140,6 +158,7 @@ const Analytics: React.FC = () => {
       processedExpenses.forEach(expense => {
         const categoryName = expense.category?.name || 'Uncategorized';
         const categoryColor = expense.category?.color || '#8884d8';
+        const categoryIcon = expense.category?.icon || 'dollar-sign';
         
         if (categoryMap.has(categoryName)) {
           const existing = categoryMap.get(categoryName)!;
@@ -150,12 +169,26 @@ const Analytics: React.FC = () => {
             name: categoryName,
             amount: expense.amount,
             color: categoryColor,
-            count: 1
+            count: 1,
+            icon: categoryIcon
           });
         }
       });
 
       setCategorySpending(Array.from(categoryMap.values()).sort((a, b) => b.amount - a.amount));
+
+      // Calculate monthly income for the period
+      const periodIncome = (incomeData || []).reduce((total, source) => {
+        let monthlyAmount = Number(source.amount);
+        if (source.frequency === 'weekly') {
+          monthlyAmount = monthlyAmount * 4.33;
+        } else if (source.frequency === 'yearly') {
+          monthlyAmount = monthlyAmount / 12;
+        } else if (source.frequency === 'one-time') {
+          monthlyAmount = 0;
+        }
+        return total + monthlyAmount;
+      }, 0);
 
       // Calculate monthly data for line chart
       const monthlyMap = new Map<string, MonthlyData>();
@@ -170,7 +203,8 @@ const Analytics: React.FC = () => {
           monthlyMap.set(month, {
             month,
             amount: expense.amount,
-            expenses: 1
+            expenses: 1,
+            income: periodIncome // Use calculated period income
           });
         }
       });
@@ -181,9 +215,15 @@ const Analytics: React.FC = () => {
       const total = processedExpenses.reduce((sum, expense) => sum + expense.amount, 0);
       setTotalSpent(total);
       setTotalTransactions(processedExpenses.length);
+      setTotalIncome(periodIncome);
       
       const daysDiff = Math.max(1, Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24)));
       setAveragePerDay(total / daysDiff);
+
+      // Calculate savings rate
+      const savings = periodIncome - total;
+      const savingsPercentage = periodIncome > 0 ? (savings / periodIncome) * 100 : 0;
+      setSavingsRate(savingsPercentage);
 
     } catch (error) {
       console.error('Error loading analytics data:', error);
@@ -199,7 +239,7 @@ const Analytics: React.FC = () => {
           <div className="py-4">
             <h1 className="text-2xl font-bold">Analytics</h1>
             <p className="text-sm text-muted-foreground">
-              Detailed analysis of your spending patterns
+              Detailed analysis of your spending patterns and income
             </p>
           </div>
           <Link
@@ -265,8 +305,21 @@ const Analytics: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Enhanced Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Income</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{currencySymbol}{totalIncome.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                Monthly income
+              </p>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
@@ -276,6 +329,21 @@ const Analytics: React.FC = () => {
               <div className="text-2xl font-bold">{currencySymbol}{totalSpent.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 {totalTransactions} transactions
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Savings Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${savingsRate < 0 ? 'text-red-600' : savingsRate > 20 ? 'text-green-600' : 'text-yellow-600'}`}>
+                {savingsRate.toFixed(1)}%
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Of total income
               </p>
             </CardContent>
           </Card>
@@ -340,23 +408,24 @@ const Analytics: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Monthly Trend Line Chart */}
+          {/* Income vs Expenses Line Chart */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <LineChart className="w-5 h-5" />
-                Monthly Trend
+                Income vs Expenses
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={monthlyData}>
+                <RechartsLineChart data={monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip formatter={(value: number) => [`${currencySymbol}${value.toFixed(2)}`, 'Amount']} />
-                  <Area type="monotone" dataKey="amount" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
-                </AreaChart>
+                  <Line type="monotone" dataKey="income" stroke="#10B981" name="Income" strokeWidth={2} />
+                  <Line type="monotone" dataKey="amount" stroke="#EF4444" name="Expenses" strokeWidth={2} />
+                </RechartsLineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -393,7 +462,7 @@ const Analytics: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle>Category Summary</CardTitle>
-              <CardDescription>Breakdown by category</CardDescription>
+              <CardDescription>Breakdown by category with icons</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -409,9 +478,15 @@ const Analytics: React.FC = () => {
                     <TableRow key={category.name}>
                       <TableCell className="flex items-center gap-2">
                         <div 
-                          className="w-3 h-3 rounded-full" 
+                          className="w-6 h-6 rounded-full flex items-center justify-center" 
                           style={{ backgroundColor: category.color }}
-                        />
+                        >
+                          <CategoryIcon 
+                            iconName={category.icon} 
+                            size={12} 
+                            color="white"
+                          />
+                        </div>
                         {category.name}
                       </TableCell>
                       <TableCell>{category.count}</TableCell>
@@ -446,7 +521,21 @@ const Analytics: React.FC = () => {
                       <TableCell>
                         {new Date(expense.expense_date).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>{expense.description || 'No description'}</TableCell>
+                      <TableCell className="flex items-center gap-2">
+                        {expense.category && (
+                          <div 
+                            className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" 
+                            style={{ backgroundColor: expense.category.color }}
+                          >
+                            <CategoryIcon 
+                              iconName={expense.category.icon} 
+                              size={10} 
+                              color="white"
+                            />
+                          </div>
+                        )}
+                        {expense.description || 'No description'}
+                      </TableCell>
                       <TableCell className="text-right font-medium">
                         {currencySymbol}{expense.amount.toFixed(2)}
                       </TableCell>

@@ -10,11 +10,13 @@ import { Progress } from '@/components/ui/progress';
 import { PlusCircle, Trash2, DollarSign, Euro, IndianRupee } from 'lucide-react';
 import { toast } from 'sonner';
 import OverallBudgetManager from './OverallBudgetManager';
+import CategoryIcon from './CategoryIcon';
 
 interface Category {
   id: string;
   name: string;
   color: string;
+  icon: string;
 }
 
 interface Budget {
@@ -25,6 +27,7 @@ interface Budget {
     id: string;
     name: string;
     color: string;
+    icon: string;
   };
   spent: number;
   currency?: string;
@@ -91,7 +94,8 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange, refreshKe
           expense_categories (
             id,
             name,
-            color
+            color,
+            icon
           ),
           currency
         `)
@@ -119,7 +123,8 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange, refreshKe
             category: {
               id: budget.expense_categories.id,
               name: budget.expense_categories.name,
-              color: budget.expense_categories.color
+              color: budget.expense_categories.color,
+              icon: budget.expense_categories.icon
             },
             spent,
             currency: budget.currency
@@ -216,7 +221,19 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange, refreshKe
                     <SelectContent>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
-                          {category.name}
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-4 h-4 rounded-full flex items-center justify-center"
+                              style={{ backgroundColor: category.color }}
+                            >
+                              <CategoryIcon 
+                                iconName={category.icon} 
+                                size={10} 
+                                color="white"
+                              />
+                            </div>
+                            {category.name}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -298,11 +315,23 @@ const BudgetManager: React.FC<BudgetManagerProps> = ({ onBudgetChange, refreshKe
               <Card key={budget.id}>
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-medium" style={{ color: budget.category.color }}>
-                        {budget.category.name}
-                      </h4>
-                      <p className="text-sm text-gray-500 capitalize">{budget.period}</p>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-6 h-6 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: budget.category.color }}
+                      >
+                        <CategoryIcon 
+                          iconName={budget.category.icon} 
+                          size={12} 
+                          color="white"
+                        />
+                      </div>
+                      <div>
+                        <h4 className="font-medium" style={{ color: budget.category.color }}>
+                          {budget.category.name}
+                        </h4>
+                        <p className="text-sm text-gray-500 capitalize">{budget.period}</p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <CurrencyIcon className="w-4 h-4 text-muted-foreground" />

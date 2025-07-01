@@ -5,17 +5,20 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, LogOut, DollarSign, TrendingUp, Calendar, Settings, Euro, IndianRupee, BarChart3 } from 'lucide-react';
+import { PlusCircle, LogOut, DollarSign, TrendingUp, Calendar, Settings, Euro, IndianRupee, BarChart3, Wallet, PieChart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ExpenseForm from './ExpenseForm';
 import ExpenseList from './ExpenseList';
 import BudgetManager from './BudgetManager';
+import IncomeManager from './IncomeManager';
 
 interface DashboardStats {
   totalExpenses: number;
   monthlyExpenses: number;
   totalBudget: number;
   expenseCount: number;
+  monthlyIncome: number;
+  salaryUtilization: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -26,7 +29,9 @@ const Dashboard: React.FC = () => {
     totalExpenses: 0,
     monthlyExpenses: 0,
     totalBudget: 0,
-    expenseCount: 0
+    expenseCount: 0,
+    monthlyIncome: 0,
+    salaryUtilization: 0
   });
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -83,15 +88,39 @@ const Dashboard: React.FC = () => {
         .select('amount')
         .eq('user_id', user.id);
 
+      // Get income sources
+      const { data: incomeSources } = await supabase
+        .from('income_sources')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+
       const totalExpenses = allExpenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
       const monthlyTotal = monthlyExpenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
       const totalBudget = budgets?.reduce((sum, budget) => sum + Number(budget.amount), 0) || 0;
+
+      // Calculate monthly income
+      const monthlyIncome = incomeSources?.reduce((total, source) => {
+        let monthlyAmount = Number(source.amount);
+        if (source.frequency === 'weekly') {
+          monthlyAmount = monthlyAmount * 4.33; // Average weeks per month
+        } else if (source.frequency === 'yearly') {
+          monthlyAmount = monthlyAmount / 12;
+        } else if (source.frequency === 'one-time') {
+          monthlyAmount = 0; // Don't count one-time income in monthly calculations
+        }
+        return total + monthlyAmount;
+      }, 0) || 0;
+
+      const salaryUtilization = monthlyIncome > 0 ? (monthlyTotal / monthlyIncome) * 100 : 0;
 
       setStats({
         totalExpenses,
         monthlyExpenses: monthlyTotal,
         totalBudget,
-        expenseCount: allExpenses?.length || 0
+        expenseCount: allExpenses?.length || 0,
+        monthlyIncome,
+        salaryUtilization
       });
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
@@ -104,6 +133,7 @@ const Dashboard: React.FC = () => {
   };
 
   const CurrencyIcon = getCurrencyIcon(currency);
+  const remainingIncome = stats.monthlyIncome - stats.monthlyExpenses;
 
   return (
     <div className="min-h-screen bg-background">
@@ -139,16 +169,16 @@ const Dashboard: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-              <CurrencyIcon className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Monthly Income</CardTitle>
+              <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats.totalExpenses)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(stats.monthlyIncome)}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.expenseCount} total transactions
+                Total monthly income
               </p>
             </CardContent>
           </Card>
@@ -168,28 +198,43 @@ const Dashboard: React.FC = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Salary Used</CardTitle>
+              <PieChart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats.totalBudget)}</div>
+              <div className={`text-2xl font-bold ${stats.salaryUtilization > 100 ? 'text-red-600' : stats.salaryUtilization > 80 ? 'text-yellow-600' : 'text-green-600'}`}>
+                {stats.salaryUtilization.toFixed(1)}%
+              </div>
               <p className="text-xs text-muted-foreground">
-                Monthly budget limit
+                Of monthly income
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Budget Status</CardTitle>
+              <CardTitle className="text-sm font-medium">Remaining</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {stats.totalBudget > 0 ? `${((stats.monthlyExpenses / stats.totalBudget) * 100).toFixed(1)}%` : '0%'}
+              <div className={`text-2xl font-bold ${remainingIncome < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {formatCurrency(remainingIncome)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Budget used this month
+                Left this month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+              <CurrencyIcon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(stats.totalExpenses)}</div>
+              <p className="text-xs text-muted-foreground">
+                {stats.expenseCount} total transactions
               </p>
             </CardContent>
           </Card>
@@ -207,8 +252,12 @@ const Dashboard: React.FC = () => {
             <ExpenseList refreshKey={refreshKey} onExpenseChange={() => setRefreshKey(prev => prev + 1)} />
           </div>
 
-          <div>
-            <h2 className="text-xl font-semibold mb-6">Budget Management</h2>
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-xl font-semibold mb-6">Income & Budget</h2>
+              <IncomeManager onIncomeChange={() => setRefreshKey(prev => prev + 1)} refreshKey={refreshKey} />
+            </div>
+            
             <BudgetManager onBudgetChange={() => setRefreshKey(prev => prev + 1)} refreshKey={refreshKey} />
           </div>
         </div>

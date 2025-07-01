@@ -11,6 +11,7 @@ import ExpenseForm from './ExpenseForm';
 import ExpenseList from './ExpenseList';
 import BudgetManager from './BudgetManager';
 import IncomeManager from './IncomeManager';
+import Footer from './Footer';
 
 interface DashboardStats {
   totalExpenses: number;
@@ -99,7 +100,7 @@ const Dashboard: React.FC = () => {
       const monthlyTotal = monthlyExpenses?.reduce((sum, exp) => sum + Number(exp.amount), 0) || 0;
       const totalBudget = budgets?.reduce((sum, budget) => sum + Number(budget.amount), 0) || 0;
 
-      // Calculate monthly income
+      // Calculate monthly income - properly handle different frequencies
       const monthlyIncome = incomeSources?.reduce((total, source) => {
         let monthlyAmount = Number(source.amount);
         if (source.frequency === 'weekly') {
@@ -133,10 +134,11 @@ const Dashboard: React.FC = () => {
   };
 
   const CurrencyIcon = getCurrencyIcon(currency);
-  const remainingIncome = stats.monthlyIncome - stats.monthlyExpenses;
+  // Fixed calculation: only show remaining if there's actual income
+  const remainingIncome = stats.monthlyIncome > 0 ? stats.monthlyIncome - stats.monthlyExpenses : 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-card shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
@@ -168,7 +170,7 @@ const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -178,7 +180,7 @@ const Dashboard: React.FC = () => {
             <CardContent>
               <div className="text-2xl font-bold">{formatCurrency(stats.monthlyIncome)}</div>
               <p className="text-xs text-muted-foreground">
-                Total monthly income
+                {stats.monthlyIncome === 0 ? 'Add income sources' : 'Total monthly income'}
               </p>
             </CardContent>
           </Card>
@@ -202,11 +204,15 @@ const Dashboard: React.FC = () => {
               <PieChart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${stats.salaryUtilization > 100 ? 'text-red-600' : stats.salaryUtilization > 80 ? 'text-yellow-600' : 'text-green-600'}`}>
-                {stats.salaryUtilization.toFixed(1)}%
+              <div className={`text-2xl font-bold ${
+                stats.monthlyIncome === 0 ? 'text-muted-foreground' : 
+                stats.salaryUtilization > 100 ? 'text-red-600' : 
+                stats.salaryUtilization > 80 ? 'text-yellow-600' : 'text-green-600'
+              }`}>
+                {stats.monthlyIncome === 0 ? 'N/A' : `${stats.salaryUtilization.toFixed(1)}%`}
               </div>
               <p className="text-xs text-muted-foreground">
-                Of monthly income
+                {stats.monthlyIncome === 0 ? 'Add income first' : 'Of monthly income'}
               </p>
             </CardContent>
           </Card>
@@ -217,11 +223,14 @@ const Dashboard: React.FC = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${remainingIncome < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {formatCurrency(remainingIncome)}
+              <div className={`text-2xl font-bold ${
+                stats.monthlyIncome === 0 ? 'text-muted-foreground' :
+                remainingIncome < 0 ? 'text-red-600' : 'text-green-600'
+              }`}>
+                {stats.monthlyIncome === 0 ? formatCurrency(0) : formatCurrency(remainingIncome)}
               </div>
               <p className="text-xs text-muted-foreground">
-                Left this month
+                {stats.monthlyIncome === 0 ? 'Add income first' : 'Left this month'}
               </p>
             </CardContent>
           </Card>
@@ -262,6 +271,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </main>
+
+      <Footer />
 
       {showExpenseForm && (
         <ExpenseForm

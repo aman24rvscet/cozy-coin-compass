@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -75,7 +74,14 @@ const IncomeManager: React.FC<IncomeManagerProps> = ({ onIncomeChange, refreshKe
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setIncomeSources(data || []);
+      
+      // Type assertion to ensure proper typing
+      const typedData = (data || []).map(item => ({
+        ...item,
+        source_type: item.source_type as 'salary' | 'additional'
+      }));
+      
+      setIncomeSources(typedData);
     } catch (error) {
       console.error('Error loading income sources:', error);
     }

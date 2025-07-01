@@ -10,6 +10,7 @@ import Dashboard from "@/components/Dashboard";
 import Auth from "@/pages/Auth";
 import Settings from "@/pages/Settings";
 import Analytics from "@/pages/Analytics";
+import Contact from "@/pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
                   <Analytics />
                 </ProtectedRoute>
               } />
+              <Route path="/contact" element={<Contact />} />
               <Route path="/auth" element={
                 <PublicRoute>
                   <Auth />

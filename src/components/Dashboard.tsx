@@ -11,6 +11,7 @@ import ExpenseList from './ExpenseList';
 import BudgetManager from './BudgetManager';
 import IncomeManager from './IncomeManager';
 import Footer from './Footer';
+import MobileNav from './MobileNav';
 
 interface DashboardStats {
   totalExpenses: number;
@@ -133,21 +134,24 @@ const Dashboard: React.FC = () => {
   };
 
   const CurrencyIcon = getCurrencyIcon(currency);
-  // Fixed calculation: only show remaining if there's actual income
   const remainingIncome = stats.monthlyIncome > 0 ? stats.monthlyIncome - stats.monthlyExpenses : 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="bg-card shadow-sm border-b">
+      <header className="bg-card shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <img src="/below.png" alt="logo" className="w-40 h-12 bg-transparent" />
+                <img src="/below.png" alt="logo" className="w-32 sm:w-40 h-8 sm:h-12 bg-transparent" />
               </div>
-              <p className="text-sm text-muted-foreground">Welcome back, {user?.full_name || user?.email}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate mt-1">
+                Welcome back, {user?.full_name || user?.email}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center gap-2">
               <Link to="/how-to-use">
                 <Button variant="outline" size="sm">
                   <BookOpen className="w-4 h-4 mr-2" />
@@ -171,19 +175,23 @@ const Dashboard: React.FC = () => {
                 Logout
               </Button>
             </div>
+
+            {/* Mobile Navigation */}
+            <MobileNav user={user} />
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
+        {/* Stats Grid - Responsive */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Monthly Income</CardTitle>
               <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats.monthlyIncome)}</div>
+              <div className="text-xl sm:text-2xl font-bold">{formatCurrency(stats.monthlyIncome)}</div>
               <p className="text-xs text-muted-foreground">
                 {stats.monthlyIncome === 0 ? 'Add income sources' : 'Total monthly income'}
               </p>
@@ -196,7 +204,7 @@ const Dashboard: React.FC = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats.monthlyExpenses)}</div>
+              <div className="text-xl sm:text-2xl font-bold">{formatCurrency(stats.monthlyExpenses)}</div>
               <p className="text-xs text-muted-foreground">
                 Current month spending
               </p>
@@ -209,7 +217,7 @@ const Dashboard: React.FC = () => {
               <PieChart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${
+              <div className={`text-xl sm:text-2xl font-bold ${
                 stats.monthlyIncome === 0 ? 'text-muted-foreground' : 
                 stats.salaryUtilization > 100 ? 'text-red-600' : 
                 stats.salaryUtilization > 80 ? 'text-yellow-600' : 'text-green-600'
@@ -228,7 +236,7 @@ const Dashboard: React.FC = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${
+              <div className={`text-xl sm:text-2xl font-bold ${
                 stats.monthlyIncome === 0 ? 'text-muted-foreground' :
                 remainingIncome < 0 ? 'text-red-600' : 'text-green-600'
               }`}>
@@ -246,7 +254,7 @@ const Dashboard: React.FC = () => {
               <CurrencyIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(stats.totalExpenses)}</div>
+              <div className="text-xl sm:text-2xl font-bold">{formatCurrency(stats.totalExpenses)}</div>
               <p className="text-xs text-muted-foreground">
                 {stats.expenseCount} total transactions
               </p>
@@ -254,11 +262,13 @@ const Dashboard: React.FC = () => {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">Recent Expenses</h2>
-              <Button onClick={() => setShowExpenseForm(true)}>
+        {/* Main Content Grid - Responsive */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
+          {/* Expenses Section */}
+          <div className="xl:col-span-2">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 sm:mb-6 gap-3">
+              <h2 className="text-lg sm:text-xl font-semibold">Recent Expenses</h2>
+              <Button onClick={() => setShowExpenseForm(true)} className="w-full sm:w-auto">
                 <PlusCircle className="w-4 h-4 mr-2" />
                 Add Expense
               </Button>
@@ -266,9 +276,10 @@ const Dashboard: React.FC = () => {
             <ExpenseList refreshKey={refreshKey} onExpenseChange={() => setRefreshKey(prev => prev + 1)} />
           </div>
 
-          <div className="space-y-8">
+          {/* Sidebar Content */}
+          <div className="space-y-6 sm:space-y-8">
             <div>
-              <h2 className="text-xl font-semibold mb-6">Income & Budget</h2>
+              <h2 className="text-lg sm:text-xl font-semibold mb-4 sm:mb-6">Income & Budget</h2>
               <IncomeManager onIncomeChange={() => setRefreshKey(prev => prev + 1)} refreshKey={refreshKey} />
             </div>
             

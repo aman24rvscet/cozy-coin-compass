@@ -6,12 +6,12 @@ import { Heart, Mail, Phone, MapPin, Github, Twitter, Linkedin } from 'lucide-re
 const Footer: React.FC = () => {
   return (
     <footer className="bg-card border-t mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           {/* Brand Section */}
-          <div className="space-y-4">
+          <div className="space-y-4 sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2">
-              <img src="/below.png" alt="Below Budget" className="w-32 h-8 bg-transparent" />
+              <img src="/below.png" alt="Below Budget" className="w-28 sm:w-32 h-7 sm:h-8 bg-transparent" />
             </div>
             <p className="text-sm text-muted-foreground">
               Take control of your finances with our comprehensive expense tracking and budgeting platform.
@@ -79,15 +79,15 @@ const Footer: React.FC = () => {
             <h3 className="font-semibold">Get in Touch</h3>
             <div className="space-y-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                <span>support@belowbudget.com</span>
+                <Mail className="w-4 h-4 flex-shrink-0" />
+                <span className="break-all">support@belowbudget.com</span>
               </div>
               <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
+                <Phone className="w-4 h-4 flex-shrink-0" />
                 <span>+1 (555) 123-4567</span>
               </div>
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
+                <MapPin className="w-4 h-4 flex-shrink-0" />
                 <span>San Francisco, CA</span>
               </div>
             </div>
@@ -95,11 +95,11 @@ const Footer: React.FC = () => {
         </div>
 
         {/* Bottom Section */}
-        <div className="border-t pt-8 mt-8 flex flex-col md:flex-row justify-between items-center">
-          <div className="text-sm text-muted-foreground">
+        <div className="border-t pt-6 sm:pt-8 mt-6 sm:mt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="text-sm text-muted-foreground text-center sm:text-left">
             © 2024 Below Budget. All rights reserved.
           </div>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-4 md:mt-0">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
             Made with <Heart className="w-4 h-4 text-red-500" /> for better financial health
           </div>
         </div>
